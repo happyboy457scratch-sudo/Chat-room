@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discord Style Chat</title>
+    <title>Discord Style Chat - Censored</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
         body { background-color: #313338; display: flex; justify-content: center; align-items: center; height: 100vh; color: #dbdee1; }
@@ -22,7 +22,7 @@
         /* Discord Message Area Layout */
         #chat-box { background: #313338; height: 380px; overflow-y: auto; padding: 15px; border-radius: 4px; margin-bottom: 15px; text-align: left; }
         
-        /* Message Styling (Discord-like stack flow) */
+        /* Message Styling */
         .msg-container { margin-bottom: 16px; clear: both; width: 100%; word-wrap: break-word; line-height: 1.375rem; }
         .msg-container strong { color: #f2f3f5; font-size: 1rem; font-weight: 500; margin-right: 8px; cursor: pointer; }
         .msg-container strong:hover { text-decoration: underline; }
@@ -62,6 +62,11 @@
         const PUSHER_CLUSTER = 'us2';
         // ────────────────────────────────────────────────────────────────
 
+        // ─── CENSOR LIST ────────────────────────────────────────────────
+        // You can add or change words inside this array. Separate them with commas.
+        const BANNED_WORDS = ['cracking', 'crack', 'gay', 'sex', 'fuck' 'diddle' 'diddling' 'dick' 'ass'];
+        // ────────────────────────────────────────────────────────────────
+
         let currentUsername = "";
         let chatChannel;
 
@@ -74,11 +79,23 @@
             }
         };
 
+        // Filter system logic
+        function cleanText(text) {
+            let filteredText = text;
+            BANNED_WORDS.forEach(word => {
+                // Creates a search rule that finds the word even if it uses capitalization
+                const searchRule = new RegExp('\\b' + word + '\\b', 'gi');
+                filteredText = filteredText.replace(searchRule, '*'.repeat(word.length));
+            });
+            return filteredText;
+        }
+
         function signIn() {
             const usernameInput = document.getElementById("username").value.trim();
             if (!usernameInput) return alert("Please enter a username");
             
-            currentUsername = usernameInput;
+            // Clean the username too just in case!
+            currentUsername = cleanText(usernameInput);
             localStorage.setItem("chat_username", currentUsername);
             startChat();
         }
@@ -88,15 +105,14 @@
             document.getElementById("chat-screen").classList.remove("hidden");
             document.getElementById("room-title").innerText = `# general (${currentUsername})`;
 
-            // Initialize Pusher connection
             const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
-            
-            // Subscribing to client channel stream
             chatChannel = pusher.subscribe('private-chat-room'); 
 
-            // Listen for incoming messages from other laptops
+            // Listen for incoming messages
             chatChannel.bind('client-new-message', function(data) {
-                showMsg(data.username, data.message);
+                // Clean incoming text to double-protect the screen
+                const safeMessage = cleanText(data.message);
+                showMsg(data.username, safeMessage);
             });
         }
 
@@ -105,21 +121,23 @@
             const text = msgInput.value.trim();
             if (!text) return;
 
+            // Clean our message before broadcasting it
+            const cleanMessage = cleanText(text);
+
             // Broadcast message out instantly
             chatChannel.trigger('client-new-message', {
                 username: currentUsername,
-                message: text
+                message: cleanMessage
             });
 
             // Show our message locally
-            showMsg(currentUsername, text);
+            showMsg(currentUsername, cleanMessage);
             msgInput.value = "";
         }
 
         function showMsg(user, text) {
             const chatBox = document.getElementById("chat-box");
             
-            // Formatted in clean Discord block format (Name on top, message right below)
             chatBox.innerHTML += `
                 <div class="msg-container">
                     <strong>${user}</strong>
