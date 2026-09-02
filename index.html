@@ -3,32 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discord Style Chat - Fixed</title>
+    <title>Discord Style Centered Chat</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
         body { background-color: #313338; display: flex; justify-content: center; align-items: center; height: 100vh; color: #dbdee1; }
         .hidden { display: none !important; }
         
-        /* Discord Main Window Container */
+        /* Centered Main Window Container layout */
         .container { background: #2b2d31; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); width: 100%; max-width: 450px; text-align: center; }
         h2 { margin-bottom: 20px; color: #f2f3f5; font-size: 24px; font-weight: 600; }
         
-        /* Form Inputs & Buttons */
+        /* Inputs & Buttons */
         input { width: 100%; padding: 12px; margin-bottom: 15px; border: none; background-color: #1e1f22; border-radius: 4px; font-size: 16px; color: #dbdee1; outline: none; }
         input::placeholder { color: #949ba4; }
         button { width: 100%; padding: 12px; background-color: #5865f2; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
         button:hover { background-color: #4752c4; }
         
-        /* Discord Message Area Layout */
+        /* Message Window Layout */
         #chat-box { background: #313338; height: 380px; overflow-y: auto; padding: 15px; border-radius: 4px; margin-bottom: 15px; text-align: left; }
         
-        /* Message Styling */
+        /* Discord Message Stack Flow */
         .msg-container { margin-bottom: 16px; clear: both; width: 100%; word-wrap: break-word; line-height: 1.375rem; }
         .msg-container strong { color: #f2f3f5; font-size: 1rem; font-weight: 500; margin-right: 8px; cursor: pointer; }
         .msg-container strong:hover { text-decoration: underline; }
         .msg-text { color: #dbdee1; font-size: 0.9375rem; display: block; margin-top: 2px; }
         
-        /* Actions Area */
+        /* Lower Dashboard Actions Area */
         .action-buttons { display: flex; gap: 10px; margin-top: 10px; }
         .btn-alt { background-color: #4e5058; color: #b5bac1; }
         .btn-alt:hover { background-color: #6d6f78; color: #fff; }
@@ -62,8 +62,11 @@
         const PUSHER_CLUSTER = 'us2';
         // ────────────────────────────────────────────────────────────────
 
-        // ─── CENSOR LIST ────────────────────────────────────────────────
-        const BANNED_WORDS = ['stupid', 'jerk', 'idiot', 'dumb'];
+        // ─── SECURE COMPREHENSIVE FILTER LIST ───────────────────────────
+        // Base64 protected dictionary blocks explicit profanity and sexual words 
+        // while safely ignoring lighter playground words like 'jerk' or 'stupid'.
+        const _encList = ["Ym9vYnM=","YmFzdGFyZA==","Yml0Y2g=","Y29jaw==","Y3VudA==","ZGljaw==","ZGlsa28=","ZmFndmFsdWVy","ZnVjaw==","b3JnYXNt","cGVuaXM=","cHVzc3k=","c2hpdA==","c2x1dA==","d2hvcmU=","cmV0YXJk"];
+        const BANNED_WORDS = _encList.map(w => atob(w));
         // ────────────────────────────────────────────────────────────────
 
         let currentUsername = "";
@@ -78,7 +81,7 @@
             }
         };
 
-        // Filter system logic
+        // Advanced Whole-Word Filter Logic
         function cleanText(text) {
             let filteredText = text;
             BANNED_WORDS.forEach(word => {
@@ -98,7 +101,6 @@
         }
 
         function startChat() {
-            // Fixed the breaking line here!
             document.getElementById("login-screen").classList.add("hidden");
             document.getElementById("chat-screen").classList.remove("hidden");
             document.getElementById("room-title").innerText = `# general (${currentUsername})`;
@@ -106,7 +108,7 @@
             const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
             chatChannel = pusher.subscribe('private-chat-room'); 
 
-            // Listen for incoming messages
+            // Listen for incoming messages from other laptops
             chatChannel.bind('client-new-message', function(data) {
                 const safeMessage = cleanText(data.message);
                 showMsg(data.username, safeMessage);
