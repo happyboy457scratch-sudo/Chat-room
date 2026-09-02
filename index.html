@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Style Chat</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+        body { background-color: #313338; display: flex; justify-content: center; align-items: center; height: 100vh; color: #dbdee1; }
+        .hidden { display: none !important; }
+        
+        /* Discord Main Window Container */
+        .container { background: #2b2d31; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); width: 100%; max-width: 450px; text-align: center; }
+        h2 { margin-bottom: 20px; color: #f2f3f5; font-size: 24px; font-weight: 600; }
+        
+        /* Form Inputs & Buttons */
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: none; background-color: #1e1f22; border-radius: 4px; font-size: 16px; color: #dbdee1; outline: none; }
+        input::placeholder { color: #949ba4; }
+        button { width: 100%; padding: 12px; background-color: #5865f2; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+        button:hover { background-color: #4752c4; }
+        
+        /* Discord Message Area Layout */
+        #chat-box { background: #313338; height: 380px; overflow-y: auto; padding: 15px; border-radius: 4px; margin-bottom: 15px; text-align: left; }
+        
+        /* Message Styling (Discord-like stack flow) */
+        .msg-container { margin-bottom: 16px; clear: both; width: 100%; word-wrap: break-word; line-height: 1.375rem; }
+        .msg-container strong { color: #f2f3f5; font-size: 1rem; font-weight: 500; margin-right: 8px; cursor: pointer; }
+        .msg-container strong:hover { text-decoration: underline; }
+        .msg-text { color: #dbdee1; font-size: 0.9375rem; display: block; margin-top: 2px; }
+        
+        /* Actions Area */
+        .action-buttons { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-alt { background-color: #4e5058; color: #b5bac1; }
+        .btn-alt:hover { background-color: #6d6f78; color: #fff; }
+    </style>
+    <!-- Load Pusher Core Library -->
+    <script src="https://pusher.com"></script>
+</head>
+<body>
+
+    <!-- DISCORD SIGN IN SCREEN -->
+    <div id="login-screen" class="container">
+        <h2>Welcome Back!</h2>
+        <input type="text" id="username" placeholder="Enter a cool username...">
+        <button onclick="signIn()">Log In</button>
+    </div>
+
+    <!-- DISCORD CHAT SCREEN -->
+    <div id="chat-screen" class="container hidden">
+        <h2 id="room-title"># general</h2>
+        <div id="chat-box"></div>
+        <input type="text" id="message-text" placeholder="Message #general" onkeypress="handleKeyPress(event)">
+        <div class="action-buttons">
+            <button onclick="sendMessage()">Send</button>
+            <button class="btn-alt" onclick="signOut()">Log Out</button>
+        </div>
+    </div>
+
+    <script>
+        // ─── PUSHER CONFIGURATION ──────────────────────────────────────
+        const PUSHER_KEY = 'a7b893957280f7fcbe2a'; 
+        const PUSHER_CLUSTER = 'us2';
+        // ────────────────────────────────────────────────────────────────
+
+        let currentUsername = "";
+        let chatChannel;
+
+        // Auto Sign-In via localStorage when page loads
+        window.onload = function() {
+            const savedUser = localStorage.getItem("chat_username");
+            if (savedUser) {
+                currentUsername = savedUser;
+                startChat();
+            }
+        };
+
+        function signIn() {
+            const usernameInput = document.getElementById("username").value.trim();
+            if (!usernameInput) return alert("Please enter a username");
+            
+            currentUsername = usernameInput;
+            localStorage.setItem("chat_username", currentUsername);
+            startChat();
+        }
+
+        function startChat() {
+            document.getElementById("login-screen").classList.add("hidden");
+            document.getElementById("chat-screen").classList.remove("hidden");
+            document.getElementById("room-title").innerText = `# general (${currentUsername})`;
+
+            // Initialize Pusher connection
+            const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
+            
+            // Subscribing to client channel stream
+            chatChannel = pusher.subscribe('private-chat-room'); 
+
+            // Listen for incoming messages from other laptops
+            chatChannel.bind('client-new-message', function(data) {
+                showMsg(data.username, data.message);
+            });
+        }
+
+        function sendMessage() {
+            const msgInput = document.getElementById("message-text");
+            const text = msgInput.value.trim();
+            if (!text) return;
+
+            // Broadcast message out instantly
+            chatChannel.trigger('client-new-message', {
+                username: currentUsername,
+                message: text
+            });
+
+            // Show our message locally
+            showMsg(currentUsername, text);
+            msgInput.value = "";
+        }
+
+        function showMsg(user, text) {
+            const chatBox = document.getElementById("chat-box");
+            
+            // Formatted in clean Discord block format (Name on top, message right below)
+            chatBox.innerHTML += `
+                <div class="msg-container">
+                    <strong>${user}</strong>
+                    <span class="msg-text">${text}</span>
+                </div>`;
+                
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        function signOut() {
+            localStorage.removeItem("chat_username");
+            location.reload();
+        }
+    </script>
+</body>
+</html>
