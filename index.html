@@ -154,9 +154,8 @@
             document.getElementById("footer-username").innerText = currentUsername;
             document.getElementById("avatar-letter").innerText = currentUsername.charAt(0).toUpperCase();
 
-            // Check if user is Hadi (case-insensitive)
+            // Admin check strictly for username "hadi"
             const isAdmin = currentUsername.toLowerCase() === 'hadi';
-            
             const roleElem = document.getElementById("footer-role");
             const badgeElem = document.getElementById("admin-badge");
 
@@ -170,15 +169,11 @@
                 badgeElem.classList.add("hidden");
             }
 
-            // Initialize Pusher with direct client-authorizer bypass
+            // Authenticate private channel through Node server
             const pusher = new Pusher(PUSHER_KEY, {
                 cluster: PUSHER_CLUSTER,
                 forceTLS: true,
-                authorizer: (channel, options) => ({
-                    authorize: (socketId, callback) => {
-                        callback(false, { auth: PUSHER_KEY + ':mock_auth_signature' });
-                    }
-                })
+                authEndpoint: 'http://localhost:3000/pusher/auth'
             });
             
             chatChannel = pusher.subscribe('private-cayman-prep-chat'); 
@@ -218,7 +213,6 @@
             const firstLetter = user.charAt(0).toUpperCase();
             const rowID = "msg-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
             
-            // Only render ADMIN tag if sender username is 'hadi'
             const adminTagHTML = user.toLowerCase() === 'hadi' ? `<span class="admin-tag">ADMIN</span>` : '';
 
             const msgHTML = `
