@@ -132,7 +132,8 @@
         function cleanText(text) {
             let filteredText = text;
             BANNED_WORDS.forEach(word => {
-                const searchRule = new RegExp('\b' + word + '\b', 'gi');
+                // Escaped double backslash so regex word boundary functions correctly
+                const searchRule = new RegExp('\\b' + word + '\\b', 'gi');
                 filteredText = filteredText.replace(searchRule, '*'.repeat(word.length));
             });
             return filteredText;
@@ -155,7 +156,9 @@
             document.getElementById("avatar-letter").innerText = currentUsername.charAt(0).toUpperCase();
 
             const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER, forceTLS: true });
-            chatChannel = pusher.subscribe('cayman-prep-chat'); 
+            
+            // Client events require a 'private-' or 'presence-' channel prefix
+            chatChannel = pusher.subscribe('private-cayman-prep-chat'); 
 
             chatChannel.bind('client-new-message', function(data) {
                 const safeMessage = cleanText(data.message);
@@ -192,7 +195,7 @@
             const firstLetter = user.charAt(0).toUpperCase();
             const rowID = "msg-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
             
-            chatBox.innerHTML += `
+            const msgHTML = `
                 <div class="msg-row" id="${rowID}">
                     <div class="avatar-circle">${firstLetter}</div>
                     <div class="msg-body">
@@ -201,7 +204,7 @@
                             <span class="admin-tag">ADMIN</span>
                             <span class="timestamp-text">${time}</span>
                         </div>
-                        <div class="text-content">${text}</div>
+                        <div class="text-content"></div>
                     </div>
                     <div class="action-tray">
                         <button class="tray-btn" onclick="setupMention('${user}')">Message</button>
@@ -209,6 +212,12 @@
                     </div>
                 </div>`;
                 
+            chatBox.insertAdjacentHTML('beforeend', msgHTML);
+            
+            // Safely assign inner message text to prevent XSS execution
+            const newMsgRow = document.getElementById(rowID);
+            newMsgRow.querySelector('.text-content').textContent = text;
+            
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
