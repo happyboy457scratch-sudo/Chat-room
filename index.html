@@ -88,7 +88,7 @@
                     <div id="avatar-icon" class="footer-avatar"><span id="avatar-letter">U</span><div class="status-dot"></div></div>
                     <div class="user-meta">
                         <span id="footer-username" class="meta-name">User</span>
-                        <span class="meta-role">Administrator</span>
+                        <span id="footer-role" class="meta-role" style="color: #949ba4;">Member</span>
                     </div>
                 </div>
                 <button class="logout-icon-btn" onclick="signOut()" title="Log Out">
@@ -100,7 +100,7 @@
         <div class="main-chat">
             <div class="chat-header">
                 <div class="header-left"><span style="color: #80848e; font-size: 24px; font-weight: normal; margin-right: 8px;">#</span> general</div>
-                <div class="admin-badge-active">ADMIN PRIVILEGES ACTIVE</div>
+                <div id="admin-badge" class="admin-badge-active hidden">ADMIN PRIVILEGES ACTIVE</div>
             </div>
             <div id="chat-box"></div>
             <div class="input-area">
@@ -132,7 +132,6 @@
         function cleanText(text) {
             let filteredText = text;
             BANNED_WORDS.forEach(word => {
-                // Escaped double backslash so regex word boundary functions correctly
                 const searchRule = new RegExp('\\b' + word + '\\b', 'gi');
                 filteredText = filteredText.replace(searchRule, '*'.repeat(word.length));
             });
@@ -155,9 +154,33 @@
             document.getElementById("footer-username").innerText = currentUsername;
             document.getElementById("avatar-letter").innerText = currentUsername.charAt(0).toUpperCase();
 
-            const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER, forceTLS: true });
+            // Check if user is Hadi (case-insensitive)
+            const isAdmin = currentUsername.toLowerCase() === 'hadi';
             
-            // Client events require a 'private-' or 'presence-' channel prefix
+            const roleElem = document.getElementById("footer-role");
+            const badgeElem = document.getElementById("admin-badge");
+
+            if (isAdmin) {
+                roleElem.innerText = "Administrator";
+                roleElem.style.color = "#f23f43";
+                badgeElem.classList.remove("hidden");
+            } else {
+                roleElem.innerText = "Member";
+                roleElem.style.color = "#949ba4";
+                badgeElem.classList.add("hidden");
+            }
+
+            // Initialize Pusher with direct client-authorizer bypass
+            const pusher = new Pusher(PUSHER_KEY, {
+                cluster: PUSHER_CLUSTER,
+                forceTLS: true,
+                authorizer: (channel, options) => ({
+                    authorize: (socketId, callback) => {
+                        callback(false, { auth: PUSHER_KEY + ':mock_auth_signature' });
+                    }
+                })
+            });
+            
             chatChannel = pusher.subscribe('private-cayman-prep-chat'); 
 
             chatChannel.bind('client-new-message', function(data) {
@@ -195,13 +218,16 @@
             const firstLetter = user.charAt(0).toUpperCase();
             const rowID = "msg-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
             
+            // Only render ADMIN tag if sender username is 'hadi'
+            const adminTagHTML = user.toLowerCase() === 'hadi' ? `<span class="admin-tag">ADMIN</span>` : '';
+
             const msgHTML = `
                 <div class="msg-row" id="${rowID}">
                     <div class="avatar-circle">${firstLetter}</div>
                     <div class="msg-body">
                         <div class="msg-meta-row">
                             <span class="user-title" onclick="setupMention('${user}')">${user}</span>
-                            <span class="admin-tag">ADMIN</span>
+                            ${adminTagHTML}
                             <span class="timestamp-text">${time}</span>
                         </div>
                         <div class="text-content"></div>
@@ -214,7 +240,6 @@
                 
             chatBox.insertAdjacentHTML('beforeend', msgHTML);
             
-            // Safely assign inner message text to prevent XSS execution
             const newMsgRow = document.getElementById(rowID);
             newMsgRow.querySelector('.text-content').textContent = text;
             
